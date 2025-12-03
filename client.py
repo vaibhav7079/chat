@@ -34,10 +34,28 @@ def receive_messages(client_socket):
             break
 
 client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-# Connect to localhost for testing
-client_socket.connect(('127.0.0.1', 12345))
 
-print("Connected to server! Type your messages below.")
+# Ask user for the server IP
+server_ip = input("Enter Server IP (press Enter for localhost): ").strip()
+if not server_ip:
+    server_ip = '127.0.0.1'
+
+# Ask for Username
+username = input("Enter your Username: ").strip()
+if not username:
+    username = "Guest"
+
+try:
+    client_socket.connect((server_ip, 12345))
+    print(f"Connected to server at {server_ip}!")
+    
+    # Send username first
+    client_socket.send(encrypt_message(username))
+    
+    print("Chat started! Type your messages below.")
+except Exception as e:
+    print(f"Could not connect to {server_ip}: {e}")
+    exit()
 
 # Start a thread to listen for incoming messages
 receive_thread = threading.Thread(target=receive_messages, args=(client_socket,))

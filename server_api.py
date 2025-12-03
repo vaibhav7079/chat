@@ -25,7 +25,7 @@ class ConnectionManager:
         self.active_connections: dict[WebSocket, str] = {}
 
     async def connect(self, websocket: WebSocket, username: str):
-        await websocket.accept()
+        # await websocket.accept()  <-- Removed, handled in endpoint
         self.active_connections[websocket] = username
         await self.broadcast_user_list()
 
@@ -61,8 +61,15 @@ class ConnectionManager:
 
 manager = ConnectionManager()
 
+CHAT_PASSWORD = "home@108"
+
 @app.websocket("/ws/{username}")
-async def websocket_endpoint(websocket: WebSocket, username: str):
+async def websocket_endpoint(websocket: WebSocket, username: str, token: str = None):
+    await websocket.accept()
+    if token != CHAT_PASSWORD:
+        await websocket.close(code=4003)
+        return
+
     await manager.connect(websocket, username)
     try:
         await manager.broadcast(f"{username} joined the chat!", sender="System")

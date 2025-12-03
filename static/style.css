@@ -119,6 +119,44 @@ button:hover {
     background: var(--primary-hover);
 }
 
+.password-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.password-wrapper input {
+    padding-right: 40px;
+    /* Make space for the button */
+}
+
+.icon-btn {
+    position: absolute;
+    right: 8px;
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    padding: 4px;
+    width: auto;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.icon-btn:hover {
+    background: transparent;
+    color: var(--primary-color);
+}
+
+.error-message {
+    color: #ef4444;
+    font-size: 0.875rem;
+    margin-top: 0.5rem;
+    min-height: 1.25rem;
+    /* Reserve space */
+}
+
 /* Chat Screen Layout */
 #chat-screen {
     background: white;

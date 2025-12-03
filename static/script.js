@@ -1,6 +1,9 @@
 const loginScreen = document.getElementById('login-screen');
 const chatScreen = document.getElementById('chat-screen');
 const usernameInput = document.getElementById('username-input');
+const passwordInput = document.getElementById('password-input');
+const togglePasswordBtn = document.getElementById('toggle-password');
+const loginError = document.getElementById('login-error');
 const joinBtn = document.getElementById('join-btn');
 const messageInput = document.getElementById('message-input');
 const sendBtn = document.getElementById('send-btn');
@@ -20,6 +23,22 @@ let username = '';
 joinBtn.addEventListener('click', joinChat);
 usernameInput.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') joinChat();
+});
+passwordInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') joinChat();
+});
+
+togglePasswordBtn.addEventListener('click', () => {
+    const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+    passwordInput.setAttribute('type', type);
+    
+    // Update icon (optional, could switch eye/eye-slash)
+    const icon = togglePasswordBtn.querySelector('svg');
+    if (type === 'text') {
+        icon.style.color = 'var(--primary-color)';
+    } else {
+        icon.style.color = 'currentColor';
+    }
 });
 
 sendBtn.addEventListener('click', sendMessage);
@@ -50,12 +69,23 @@ document.addEventListener('click', (e) => {
 
 function joinChat() {
     username = usernameInput.value.trim();
-    if (!username) return;
+    const password = passwordInput.value.trim();
+    
+    loginError.textContent = ''; // Clear previous errors
+
+    if (!username) {
+        loginError.textContent = "Please enter a username";
+        return;
+    }
+    if (!password) {
+        loginError.textContent = "Please enter the password";
+        return;
+    }
 
     // Determine WebSocket URL based on current location
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const host = window.location.host;
-    const wsUrl = `${protocol}//${host}/ws/${encodeURIComponent(username)}`;
+    const wsUrl = `${protocol}//${host}/ws/${encodeURIComponent(username)}?token=${encodeURIComponent(password)}`;
 
     connectWebSocket(wsUrl);
 }
@@ -67,6 +97,7 @@ function connectWebSocket(url) {
         showChatScreen();
         myUsernameDisplay.textContent = username;
         myAvatar.textContent = username.charAt(0).toUpperCase();
+        loginError.textContent = '';
     };
 
     websocket.onmessage = (event) => {
@@ -74,14 +105,19 @@ function connectWebSocket(url) {
         handleMessage(data);
     };
 
-    websocket.onclose = () => {
+    websocket.onclose = (event) => {
+        if (event.code === 4003) {
+            loginError.textContent = "Incorrect Password!";
+        } else if (event.code !== 1000) {
+             // 1000 is normal closure
+             // If it closed immediately without 4003, might be connection error
+             // But usually 4003 is sent for auth failure
+        }
         showLoginScreen();
     };
 
     websocket.onerror = (error) => {
         console.error('WebSocket Error:', error);
-        alert('Connection error. Please try again.');
-        showLoginScreen();
     };
 }
 

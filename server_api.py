@@ -33,19 +33,35 @@ class ConnectionManager:
         if websocket in self.active_connections:
             del self.active_connections[websocket]
 
-    async def broadcast(self, message: str, sender: str = "System"):
+    async def broadcast(self, message: str, sender: str = "System", recipient: str = None):
         timestamp = datetime.now().strftime("%H:%M")
         data = json.dumps({
             "type": "message",
             "content": message,
             "sender": sender,
-            "timestamp": timestamp
+            "timestamp": timestamp,
+            "recipient": recipient
         })
-        for connection in self.active_connections:
-            try:
-                await connection.send_text(data)
-            except:
-                pass
+
+        if recipient and recipient != "General":
+            # Private message logic
+            target_found = False
+            for connection, user in self.active_connections.items():
+                if user == recipient or user == sender:
+                    try:
+                        await connection.send_text(data)
+                        if user == recipient:
+                            target_found = True
+                    except:
+                        pass
+            # Optional: Notify sender if recipient not found?
+        else:
+            # Broadcast to all
+            for connection in self.active_connections:
+                try:
+                    await connection.send_text(data)
+                except:
+                    pass
 
     async def broadcast_user_list(self):
         users = list(self.active_connections.values())
@@ -70,12 +86,24 @@ async def websocket_endpoint(websocket: WebSocket, username: str, token: str = N
         await websocket.close(code=4003)
         return
 
+    if username in manager.active_connections.values():
+        await websocket.close(code=4009)
+        return
+
     await manager.connect(websocket, username)
     try:
         await manager.broadcast(f"{username} joined the chat!", sender="System")
         while True:
-            data = await websocket.receive_text()
-            await manager.broadcast(data, sender=username)
+            data_str = await websocket.receive_text()
+            try:
+                data_json = json.loads(data_str)
+                content = data_json.get("content")
+                recipient = data_json.get("recipient")
+            except json.JSONDecodeError:
+                content = data_str
+                recipient = None
+            
+            await manager.broadcast(content, sender=username, recipient=recipient)
     except WebSocketDisconnect:
         manager.disconnect(websocket)
         await manager.broadcast(f"{username} left the chat.", sender="System")

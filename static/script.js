@@ -67,6 +67,43 @@ document.addEventListener('click', (e) => {
     }
 });
 
+let currentRecipient = null; // null means General
+let allMessages = []; // Store all messages locally
+
+function selectRecipient(recipient) {
+    currentRecipient = recipient;
+    
+    // Update UI
+    document.querySelectorAll('.user-item').forEach(item => item.classList.remove('active'));
+    if (recipient) {
+        const items = document.querySelectorAll('.user-item');
+        items.forEach(item => {
+            if (item.querySelector('.user-name')?.textContent === recipient) {
+                item.classList.add('active');
+            }
+        });
+    } else {
+        document.getElementById('general-channel').classList.add('active');
+    }
+
+    // Update Header
+    const channelName = document.querySelector('.chat-info h2');
+    if (recipient) {
+        channelName.textContent = `Private with ${recipient}`;
+    } else {
+        channelName.textContent = "General Channel";
+    }
+    
+    // Render filtered messages
+    renderMessages();
+    
+    // Clear input
+    messageInput.focus();
+}
+
+// Expose to window for onclick
+window.selectRecipient = selectRecipient;
+
 function joinChat() {
     username = usernameInput.value.trim();
     const password = passwordInput.value.trim();
@@ -98,6 +135,8 @@ function connectWebSocket(url) {
         myUsernameDisplay.textContent = username;
         myAvatar.textContent = username.charAt(0).toUpperCase();
         loginError.textContent = '';
+        allMessages = []; // Clear messages on new connection
+        selectRecipient(null); // Reset to General
     };
 
     websocket.onmessage = (event) => {
@@ -108,10 +147,8 @@ function connectWebSocket(url) {
     websocket.onclose = (event) => {
         if (event.code === 4003) {
             loginError.textContent = "Incorrect Password!";
-        } else if (event.code !== 1000) {
-             // 1000 is normal closure
-             // If it closed immediately without 4003, might be connection error
-             // But usually 4003 is sent for auth failure
+        } else if (event.code === 4009) {
+            loginError.textContent = "Username already taken!";
         }
         showLoginScreen();
     };
@@ -123,32 +160,62 @@ function connectWebSocket(url) {
 
 function handleMessage(data) {
     if (data.type === 'message') {
-        displayMessage(data);
+        allMessages.push(data);
+        if (shouldDisplayMessage(data)) {
+            displayMessage(data);
+        }
     } else if (data.type === 'user_list') {
         updateUserList(data.users);
     }
 }
 
+function shouldDisplayMessage(data) {
+    const { recipient, sender } = data;
+    const isPrivate = !!recipient;
+    
+    if (currentRecipient === null) {
+        // General Channel: Show only public messages (no recipient)
+        return !isPrivate;
+    } else {
+        // Private Channel: Show messages with the current recipient
+        if (!isPrivate) return false;
+        
+        const isMe = sender === username;
+        if (isMe) {
+            return recipient === currentRecipient;
+        } else {
+            return sender === currentRecipient;
+        }
+    }
+}
+
+function renderMessages() {
+    messagesContainer.innerHTML = '';
+    allMessages.forEach(msg => {
+        if (shouldDisplayMessage(msg)) {
+            displayMessage(msg);
+        }
+    });
+    scrollToBottom();
+}
+
 function sendMessage() {
     const message = messageInput.value.trim();
     if (message && websocket && websocket.readyState === WebSocket.OPEN) {
-        websocket.send(message);
-        // Note: Server now broadcasts back to sender too (in my updated logic), 
-        // OR we can optimistically add it. 
-        // Let's check server logic: "await manager.broadcast(data, sender=username)"
-        // And broadcast excludes sender? No, I removed the "if connection != sender" check in the new broadcast method!
-        // Wait, let me double check the server code I wrote.
-        // "for connection in self.active_connections: await connection.send_text(data)"
-        // YES, it sends to everyone including sender. So I should NOT add it manually here to avoid duplicates.
-        
+        const payload = JSON.stringify({
+            content: message,
+            recipient: currentRecipient
+        });
+        websocket.send(payload);
         messageInput.value = '';
     }
 }
 
 function displayMessage(data) {
-    const { content, sender, timestamp } = data;
+    const { content, sender, timestamp, recipient } = data;
     const isMe = sender === username;
     const isSystem = sender === 'System';
+    const isPrivate = !!recipient;
 
     if (isSystem) {
         addSystemMessage(content);
@@ -176,6 +243,26 @@ function displayMessage(data) {
     messageBubble.classList.add('message-bubble');
     messageBubble.textContent = content;
 
+    if (isPrivate) {
+        messageBubble.classList.add('private');
+        // Optional: We don't strictly need the label anymore since the view is filtered,
+        // but it doesn't hurt to keep it for clarity.
+        // Let's keep it but maybe simplify? No, keep as is for consistency.
+        const privateLabel = document.createElement('span');
+        privateLabel.style.fontSize = '0.7em';
+        privateLabel.style.fontWeight = 'bold';
+        privateLabel.style.display = 'block';
+        privateLabel.style.marginBottom = '4px';
+        privateLabel.style.color = 'var(--accent-color)';
+        
+        if (isMe) {
+            privateLabel.textContent = `Private to ${recipient}`;
+        } else {
+            privateLabel.textContent = `Private from ${sender}`;
+        }
+        messageBubble.prepend(privateLabel);
+    }
+
     messageWrapper.appendChild(messageMeta);
     messageWrapper.appendChild(messageBubble);
 
@@ -192,12 +279,21 @@ function addSystemMessage(text) {
 }
 
 function updateUserList(users) {
+    // Keep reference to general channel
+    const generalActive = currentRecipient === null;
+    
     userList.innerHTML = '';
     userCount.textContent = users.length;
 
     users.forEach(user => {
+        if (user === username) return; // Don't show self in list to chat with
+
         const li = document.createElement('li');
         li.classList.add('user-item');
+        if (currentRecipient === user) {
+            li.classList.add('active');
+        }
+        li.onclick = () => selectRecipient(user);
         
         const avatar = document.createElement('div');
         avatar.classList.add('user-avatar');
@@ -206,16 +302,19 @@ function updateUserList(users) {
         const name = document.createElement('span');
         name.classList.add('user-name');
         name.textContent = user;
-        
-        if (user === username) {
-            name.textContent += ' (You)';
-            name.style.fontWeight = 'bold';
-        }
 
         li.appendChild(avatar);
         li.appendChild(name);
         userList.appendChild(li);
     });
+    
+    // Re-apply active class to General if needed
+    const generalChannel = document.getElementById('general-channel');
+    if (generalActive) {
+        generalChannel.classList.add('active');
+    } else {
+        generalChannel.classList.remove('active');
+    }
 }
 
 function scrollToBottom() {

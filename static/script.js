@@ -69,10 +69,21 @@ document.addEventListener('click', (e) => {
 
 let currentRecipient = null; // null means General
 let allMessages = []; // Store all messages locally
+let unreadCounts = {
+    'General': 0
+};
 
 function selectRecipient(recipient) {
     currentRecipient = recipient;
     
+    // Reset unread count
+    if (recipient) {
+        unreadCounts[recipient] = 0;
+    } else {
+        unreadCounts['General'] = 0;
+    }
+    updateNotificationUI(recipient);
+
     // Update UI
     document.querySelectorAll('.user-item').forEach(item => item.classList.remove('active'));
     if (recipient) {
@@ -88,10 +99,18 @@ function selectRecipient(recipient) {
 
     // Update Header
     const channelName = document.querySelector('.chat-info h2');
+    const headerAvatar = document.getElementById('header-avatar');
+    
     if (recipient) {
-        channelName.textContent = `Private with ${recipient}`;
+        channelName.textContent = recipient;
+        headerAvatar.style.display = 'flex';
+        headerAvatar.style.background = '#334155'; // Default or dynamic color
+        headerAvatar.textContent = recipient.charAt(0).toUpperCase();
     } else {
-        channelName.textContent = "General Channel";
+        channelName.textContent = "General";
+        headerAvatar.style.display = 'flex';
+        headerAvatar.style.background = 'var(--primary-color)';
+        headerAvatar.textContent = '#';
     }
     
     // Render filtered messages
@@ -99,10 +118,30 @@ function selectRecipient(recipient) {
     
     // Clear input
     messageInput.focus();
+    
+    // Mobile: Show chat view
+    showChatView();
 }
 
 // Expose to window for onclick
 window.selectRecipient = selectRecipient;
+window.showSidebarView = showSidebarView;
+
+function showChatView() {
+    if (window.innerWidth <= 768) {
+        document.querySelector('.sidebar').classList.add('hidden');
+        document.querySelector('.chat-area').classList.add('active');
+    }
+}
+
+function showSidebarView() {
+    if (window.innerWidth <= 768) {
+        document.querySelector('.sidebar').classList.remove('hidden');
+        document.querySelector('.chat-area').classList.remove('active');
+        // Optional: Deselect recipient to clear active state? 
+        // No, keep state, just change view.
+    }
+}
 
 function joinChat() {
     username = usernameInput.value.trim();
@@ -136,7 +175,9 @@ function connectWebSocket(url) {
         myAvatar.textContent = username.charAt(0).toUpperCase();
         loginError.textContent = '';
         allMessages = []; // Clear messages on new connection
+        unreadCounts = { 'General': 0 }; // Reset counts
         selectRecipient(null); // Reset to General
+        showSidebarView(); // Ensure sidebar is visible on load (mobile)
     };
 
     websocket.onmessage = (event) => {
@@ -161,11 +202,67 @@ function connectWebSocket(url) {
 function handleMessage(data) {
     if (data.type === 'message') {
         allMessages.push(data);
+        
+        // Handle unread counts
+        const { recipient, sender } = data;
+        const isPrivate = !!recipient;
+        const isMe = sender === username;
+
+        if (!isMe) {
+            if (isPrivate) {
+                // Private message received
+                // If I am NOT chatting with the sender, increment their count
+                if (currentRecipient !== sender) {
+                    unreadCounts[sender] = (unreadCounts[sender] || 0) + 1;
+                    updateNotificationUI(sender);
+                }
+            } else {
+                // Public message received
+                // If I am NOT in General, increment General count
+                if (currentRecipient !== null) {
+                    unreadCounts['General'] = (unreadCounts['General'] || 0) + 1;
+                    updateNotificationUI(null); // null for General
+                }
+            }
+        }
+
         if (shouldDisplayMessage(data)) {
             displayMessage(data);
         }
     } else if (data.type === 'user_list') {
         updateUserList(data.users);
+    }
+}
+
+function updateNotificationUI(user) {
+    let container;
+    let countSpan;
+    let count;
+
+    if (user) {
+        // Find user item
+        const items = document.querySelectorAll('.user-item');
+        items.forEach(item => {
+            if (item.querySelector('.user-name')?.textContent === user) {
+                container = item.querySelector('.badge-container');
+                countSpan = item.querySelector('.notification-count');
+            }
+        });
+        count = unreadCounts[user] || 0;
+    } else {
+        // General
+        container = document.getElementById('general-badge-container');
+        countSpan = document.getElementById('general-badge');
+        count = unreadCounts['General'] || 0;
+    }
+
+    if (container && countSpan) {
+        countSpan.textContent = count;
+        if (count > 0) {
+            container.style.display = 'flex';
+        } else {
+            container.style.display = 'none';
+        }
     }
 }
 
@@ -245,22 +342,7 @@ function displayMessage(data) {
 
     if (isPrivate) {
         messageBubble.classList.add('private');
-        // Optional: We don't strictly need the label anymore since the view is filtered,
-        // but it doesn't hurt to keep it for clarity.
-        // Let's keep it but maybe simplify? No, keep as is for consistency.
-        const privateLabel = document.createElement('span');
-        privateLabel.style.fontSize = '0.7em';
-        privateLabel.style.fontWeight = 'bold';
-        privateLabel.style.display = 'block';
-        privateLabel.style.marginBottom = '4px';
-        privateLabel.style.color = 'var(--accent-color)';
-        
-        if (isMe) {
-            privateLabel.textContent = `Private to ${recipient}`;
-        } else {
-            privateLabel.textContent = `Private from ${sender}`;
-        }
-        messageBubble.prepend(privateLabel);
+        // Private label removed as per user request
     }
 
     messageWrapper.appendChild(messageMeta);
@@ -303,8 +385,31 @@ function updateUserList(users) {
         name.classList.add('user-name');
         name.textContent = user;
 
+        // Badge Container
+        const badgeContainer = document.createElement('div');
+        badgeContainer.classList.add('badge-container');
+        badgeContainer.style.display = 'none'; // Hidden by default
+
+        const countSpan = document.createElement('span');
+        countSpan.classList.add('notification-count');
+        const count = unreadCounts[user] || 0;
+        countSpan.textContent = count;
+        
+        if (count > 0) {
+            badgeContainer.style.display = 'flex';
+        }
+
+        // Bell Icon SVG
+        badgeContainer.innerHTML = `
+            <span class="notification-count">${count}</span>
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" class="bell-icon">
+                <path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2zm-2 1H8v-6c0-2.48 1.51-4.5 4-4.5s4 2.02 4 4.5v6z"/>
+            </svg>
+        `;
+        
         li.appendChild(avatar);
         li.appendChild(name);
+        li.appendChild(badgeContainer);
         userList.appendChild(li);
     });
     
@@ -315,6 +420,9 @@ function updateUserList(users) {
     } else {
         generalChannel.classList.remove('active');
     }
+    
+    // Update General badge as well (it might have changed while list was rebuilding)
+    updateNotificationUI(null);
 }
 
 function scrollToBottom() {

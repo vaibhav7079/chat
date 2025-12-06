@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Secure Chat Enterprise</title>
+    <title>Secure Chat</title>
     <link rel="stylesheet" href="/static/style.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
@@ -16,7 +16,6 @@
                     <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/>
                 </svg>
                 <h1>Secure Chat</h1>
-                <p>Enterprise Edition</p>
             </div>
             <div class="input-group">
                 <label>Username</label>
@@ -43,18 +42,31 @@
         <!-- Sidebar -->
         <aside class="sidebar">
             <div class="sidebar-header">
-                <h3>Online Users</h3>
-                <span id="user-count" class="badge">0</span>
+                <h3>Workspace</h3>
             </div>
-            <ul id="channel-list">
-                <li class="user-item active" id="general-channel" onclick="selectRecipient(null)">
-                    <div class="user-avatar" style="background: var(--primary-color)">#</div>
-                    <span class="user-name">General</span>
-                </li>
-            </ul>
-            <ul id="user-list">
-                <!-- User items will go here -->
-            </ul>
+            <div class="sidebar-scroll">
+                <div class="section-header">CHANNELS</div>
+                <ul id="channel-list">
+                    <li class="user-item active" id="general-channel" onclick="selectRecipient(null)">
+                        <div class="user-avatar" style="background: var(--primary-color)">#</div>
+                        <span class="user-name">General</span>
+                        <div class="badge-container" id="general-badge-container" style="display: none;">
+                            <span class="notification-count" id="general-badge">0</span>
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" class="bell-icon">
+                                <path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2zm-2 1H8v-6c0-2.48 1.51-4.5 4-4.5s4 2.02 4 4.5v6z"/>
+                            </svg>
+                        </div>
+                    </li>
+                </ul>
+
+                <div class="section-header">
+                    DIRECT MESSAGES
+                    <span id="user-count" class="badge">0</span>
+                </div>
+                <ul id="user-list">
+                    <!-- User items will go here -->
+                </ul>
+            </div>
             <div class="sidebar-footer">
                 <div class="user-profile">
                     <div class="avatar" id="my-avatar"></div>
@@ -70,9 +82,12 @@
         <main class="chat-area">
             <header class="chat-header">
                 <div class="header-left">
-                    <button id="menu-btn" class="mobile-only">
-                        <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>
+                    <button id="back-btn" class="mobile-only icon-btn" onclick="showSidebarView()">
+                        <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+                            <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
+                        </svg>
                     </button>
+                    <div id="header-avatar" class="user-avatar" style="width: 36px; height: 36px; margin-right: 0.75rem; display: none;">#</div>
                     <div class="chat-info">
                         <h2>General Channel</h2>
                         <div class="secure-badge">

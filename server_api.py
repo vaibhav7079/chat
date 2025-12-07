@@ -17,7 +17,8 @@ async def get():
         return HTMLResponse(content=f.read(), status_code=200)
 
 import json
-from datetime import datetime
+import json
+from datetime import datetime, timedelta
 
 class ConnectionManager:
     def __init__(self):
@@ -34,7 +35,8 @@ class ConnectionManager:
             del self.active_connections[websocket]
 
     async def broadcast(self, message: str, sender: str = "System", recipient: str = None):
-        timestamp = datetime.now().strftime("%H:%M")
+        # IST is UTC + 5:30
+        timestamp = (datetime.utcnow() + timedelta(hours=5, minutes=30)).strftime("%I:%M %p")
         data = json.dumps({
             "type": "message",
             "content": message,

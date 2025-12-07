@@ -53,6 +53,8 @@ leaveBtn.addEventListener('click', () => {
     showLoginScreen();
 });
 
+// Menu and click-outside logic removed for 20/80 split layout
+/*
 menuBtn.addEventListener('click', () => {
     sidebar.classList.toggle('open');
 });
@@ -66,6 +68,7 @@ document.addEventListener('click', (e) => {
         sidebar.classList.remove('open');
     }
 });
+*/
 
 let currentRecipient = null; // null means General
 let allMessages = []; // Store all messages locally
@@ -128,19 +131,11 @@ window.selectRecipient = selectRecipient;
 window.showSidebarView = showSidebarView;
 
 function showChatView() {
-    if (window.innerWidth <= 768) {
-        document.querySelector('.sidebar').classList.add('hidden');
-        document.querySelector('.chat-area').classList.add('active');
-    }
+    // Layout handled by CSS: 20/80 split. No toggling needed.
 }
 
 function showSidebarView() {
-    if (window.innerWidth <= 768) {
-        document.querySelector('.sidebar').classList.remove('hidden');
-        document.querySelector('.chat-area').classList.remove('active');
-        // Optional: Deselect recipient to clear active state? 
-        // No, keep state, just change view.
-    }
+    // Layout handled by CSS: 20/80 split. No toggling needed.
 }
 
 function joinChat() {
@@ -325,12 +320,14 @@ function displayMessage(data) {
     const messageMeta = document.createElement('div');
     messageMeta.classList.add('message-meta');
     
+    /* Sender name removed as per request
     if (!isMe) {
         const senderName = document.createElement('span');
         senderName.classList.add('sender-name');
         senderName.textContent = sender;
         messageMeta.appendChild(senderName);
     }
+    */
 
     const timeSpan = document.createElement('span');
     timeSpan.textContent = timestamp;

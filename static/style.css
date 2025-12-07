@@ -630,53 +630,95 @@ button:hover {
 @media (max-width: 768px) {
     .mobile-only {
         display: flex;
-        /* Changed from block to flex for alignment */
     }
 
     #chat-screen {
-        position: relative;
+        flex-direction: row;
+        /* Force row layout */
     }
 
     .sidebar {
-        position: absolute;
-        width: 100%;
-        height: 100%;
-        z-index: 20;
-        transform: translateX(0);
-        transition: transform 0.3s ease-in-out;
+        width: 20%;
+        min-width: 60px;
+        /* Minimum width to fit avatar comfortably */
+        position: relative;
+        transform: none;
+        transition: none;
+        z-index: 10;
+        border-right: 1px solid rgba(255, 255, 255, 0.05);
     }
 
-    .sidebar.hidden {
-        transform: translateX(-100%);
+    /* Hide text elements in sidebar on mobile */
+    .sidebar-header h3,
+    .user-name,
+    .badge-container,
+    .sidebar-footer .user-info {
+        display: none;
+    }
+
+    /* Center alignment for icon-only sidebar */
+    .sidebar-header {
+        justify-content: center;
+        padding: 0;
+    }
+
+    .user-item {
+        justify-content: center;
+        padding: 0.75rem 0.25rem;
+    }
+
+    .user-avatar {
+        margin-right: 0;
+        width: 40px;
+        height: 40px;
+        font-size: 1rem;
+    }
+
+    .sidebar-footer {
+        justify-content: center;
+        padding: 1rem 0.5rem;
+    }
+
+    .user-profile {
+        padding: 0;
+    }
+
+    .avatar {
+        margin-right: 0;
+    }
+
+    /* Ensure specific elements like general channel avatar also center */
+    #general-channel .user-avatar {
+        margin-right: 0;
     }
 
     .chat-area {
-        position: absolute;
-        width: 100%;
-        height: 100%;
-        z-index: 10;
-        transform: translateX(100%);
-        /* Initially hidden to the right */
-        transition: transform 0.3s ease-in-out;
+        width: 80%;
+        position: relative;
+        transform: none;
+        z-index: 1;
+        transition: none;
+    }
+
+    /* Override hidden/active states from JS if they persist */
+    .sidebar.hidden {
+        transform: none;
     }
 
     .chat-area.active {
-        transform: translateX(0);
+        transform: none;
     }
 
     #menu-btn {
         display: none;
-        /* We don't need the menu button anymore with this flow */
     }
 
     #back-btn {
-        margin-right: 0.5rem;
-        color: var(--text-primary);
-        padding: 0.5rem;
-        border-radius: 50%;
+        display: none;
     }
 
-    #back-btn:hover {
-        background: var(--bg-color);
+    /* Adjust input area for smaller screens */
+    .input-area {
+        padding: 0.5rem;
     }
 }
